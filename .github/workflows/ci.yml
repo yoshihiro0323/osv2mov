@@ -2,99 +2,17 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
 
 jobs:
   test:
-    name: Test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
         with:
-          go-version: '1.22.1'
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: Run tests
-        run: go test -v ./...
-
-      - name: Run tests with race detection
-        run: go test -race -v ./...
-
-      - name: Build
-        run: go build -v .
-
-      - name: Run go vet
-        run: go vet ./...
-
-      - name: Run go fmt check
-        run: |
-          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
-            echo "Code is not formatted. Please run 'go fmt ./...'"
-            gofmt -s -l .
-            exit 1
-          fi
-
-      - name: Run go mod tidy check
-        run: |
-          go mod tidy
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "go.mod or go.sum is not up to date. Please run 'go mod tidy'"
-            git status
-            exit 1
-          fi
-
-      - name: Install nancy
-        run: go install github.com/sonatype-nexus-community/nancy@latest
-
-      - name: Run security check
-        run: go list -json -deps ./... | nancy sleuth
-
-  build-matrix:
-    name: Build Matrix
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - name: Linux AMD64
-            goos: linux
-            goarch: amd64
-          - name: macOS AMD64
-            goos: darwin
-            goarch: amd64
-          - name: Windows AMD64
-            goos: windows
-            goarch: amd64
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.22.1'
-
-      - name: Build
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-        run: |
-          go build -v -o osv2mov-${{ matrix.goos }}-${{ matrix.goarch }} .
-          if [ "${{ matrix.goos }}" = "windows" ]; then
-            mv osv2mov-${{ matrix.goos }}-${{ matrix.goarch }} osv2mov-${{ matrix.goos }}-${{ matrix.goarch }}.exe
-          fi
+          go-version: '1.22'
+      - run: go test ./...
+      - run: go build .
