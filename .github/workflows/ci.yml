@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Run tests with race detection
+        run: go test -race -v ./...
+
+      - name: Build
+        run: go build -v ./cmd/osv2mov
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run go fmt check
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "Code is not formatted. Please run 'go fmt ./...'"
+            gofmt -s -l .
+            exit 1
+          fi
+
+  build-matrix:
+    name: Build Matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: Linux AMD64
+            goos: linux
+            goarch: amd64
+          - name: macOS AMD64
+            goos: darwin
+            goarch: amd64
+          - name: Windows AMD64
+            goos: windows
+            goarch: amd64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -v -o osv2mov-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/osv2mov
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            mv osv2mov-${{ matrix.goos }}-${{ matrix.goarch }} osv2mov-${{ matrix.goos }}-${{ matrix.goarch }}.exe
+          fi

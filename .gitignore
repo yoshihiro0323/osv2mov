@@ -30,3 +30,7 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+.DS_Store
+
+# Built binary
+/osv2mov

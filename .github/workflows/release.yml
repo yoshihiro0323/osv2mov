@@ -1,0 +1,94 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: Linux AMD64
+            goos: linux
+            goarch: amd64
+            goarm: ''
+            artifact_name: osv2mov-linux-amd64
+          - name: Linux ARM64
+            goos: linux
+            goarch: arm64
+            goarm: ''
+            artifact_name: osv2mov-linux-arm64
+          - name: macOS AMD64
+            goos: darwin
+            goarch: amd64
+            goarm: ''
+            artifact_name: osv2mov-darwin-amd64
+          - name: macOS ARM64
+            goos: darwin
+            goarch: arm64
+            goarm: ''
+            artifact_name: osv2mov-darwin-arm64
+          - name: Windows AMD64
+            goos: windows
+            goarch: amd64
+            goarm: ''
+            artifact_name: osv2mov-windows-amd64.exe
+          - name: Windows ARM64
+            goos: windows
+            goarch: arm64
+            goarm: ''
+            artifact_name: osv2mov-windows-arm64.exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+        run: |
+          go build -ldflags="-s -w" -o ${{ matrix.artifact_name }} ./cmd/osv2mov
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            osv2mov-linux-amd64
+            osv2mov-linux-arm64
+            osv2mov-darwin-amd64
+            osv2mov-darwin-arm64
+            osv2mov-windows-amd64.exe
+            osv2mov-windows-arm64.exe
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
